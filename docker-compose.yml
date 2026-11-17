@@ -1,0 +1,41 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: movie-mongo
+    # --replSet rs0 starts MongoDB in replica set mode (required for transactions)
+    # --bind_ip_all allows MongoDB to accept connections from all network interfaces, including outside the Docker container.
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      # Trick: this runs every few seconds. If the replica set isn't set up yet,
+      # rs.status() throws, so we catch it and run rs.initiate() once.
+      # After that rs.status() succeeds and the container reports "healthy".
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }).ok }",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: movie-redis
+    ports:
+      - "6379:6379"
+    # redis-server starts the Redis server, while --appendonly yes enables AOF persistence, saving write operations to disk so Redis can recover its data after a restart.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:
