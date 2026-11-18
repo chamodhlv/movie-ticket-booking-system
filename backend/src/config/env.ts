@@ -11,6 +11,7 @@ const schema = z.object({
   MONGO_URI: z.string().min(1),
   REDIS_URL: z.string().min(1),
   CLIENT_ORIGIN: z.string().min(1),
+  JWT_ACCESS_SECRET: z.string().min(32, "must be at least 32 characters"),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -23,3 +24,5 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// `env.ts` loads environment variables from the `.env` file, validates them using Zod, and exports the validated configuration for use throughout the backend.
