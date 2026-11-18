@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import mongoose from "mongoose";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { redis } from "./config/redis";
+import { authRouter } from "./modules/auth/auth.routes";
+import { errorHandler } from "./middleware/errorHandler";
 
 // WHY app.ts AND server.ts ARE SEPARATE:
 // app.ts only builds the Express app (routes, middleware) and does NOT start listening.
@@ -18,6 +21,7 @@ app.use(helmet());
 app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
 app.use(pinoHttp({ logger })); // logs every request
+app.use(cookieParser()); // fills req.cookies
 
 // LIVENESS: "is the process alive?" (Docker/Kubernetes use this to restart a dead app)
 app.get("/health", (_req, res) => {
@@ -37,3 +41,14 @@ app.get("/ready", (_req, res) => {
     redis: redisOk,
   });
 });
+
+// All business routes live under /api
+app.use("/api/auth", authRouter);
+
+// Unknown URL
+app.use((_req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+// MUST be registered LAST so it catches errors from everything above.
+app.use(errorHandler);
