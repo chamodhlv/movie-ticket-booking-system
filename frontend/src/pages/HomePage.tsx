@@ -12,7 +12,7 @@ export default function HomePage() {
   });
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+    <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm rounded-2xl bg-slate-900 p-6 shadow-lg">
         <h1 className="text-2xl font-bold mb-4">🎬 Movie Ticket Booking</h1>
 
