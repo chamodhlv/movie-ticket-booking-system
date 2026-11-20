@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { HttpError } from "../utils/httpError";
 import { logger } from "../config/logger";
+import { ZodError } from "zod";
 
 // Express recognises an error handler by its 4 parameters, so keep `_next`
 // even though we don't use it.
@@ -10,6 +11,17 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      message: "Validation failed",
+      errors: err.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      })),
+    });
+    return;
+  }
+
   if (err instanceof HttpError) {
     res.status(err.status).json({ message: err.message });
     return;
