@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AccountPage from "./pages/AccountPage";
 import AdminPage from "./pages/AdminPage";
+import MovieDetailPage from "./pages/MovieDetailPage";
 
 export default function App() {
   return (
@@ -28,6 +29,17 @@ export default function App() {
         <Route
           path="*"
           element={<p className="p-6 text-slate-400">Page not found.</p>}
+        />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/movies/:id" element={<MovieDetailPage />} />
+        {/* Placeholder until we build the seat map in a later part */}
+        <Route
+          path="/showtimes/:id"
+          element={
+            <p className="p-6 text-slate-300">
+              Seat selection comes in a later part.
+            </p>
+          }
         />
       </Route>
     </Routes>
