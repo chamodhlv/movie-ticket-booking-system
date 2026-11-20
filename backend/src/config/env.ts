@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { DateTime } from "luxon";
 import { z } from "zod";
 
 // Describe what a valid environment looks like.
@@ -12,6 +13,15 @@ const schema = z.object({
   REDIS_URL: z.string().min(1),
   CLIENT_ORIGIN: z.string().min(1),
   JWT_ACCESS_SECRET: z.string().min(32, "must be at least 32 characters"),
+  // The timezone cinemas operate in (IANA name). Used to decide what "today" means.
+  // Fail fast if someone types a timezone that doesn't exist.
+  APP_TIMEZONE: z
+    .string()
+    .default("Asia/Colombo")
+    .refine(
+      (tz) => DateTime.local().setZone(tz).isValid,
+      "must be a valid IANA timezone, e.g. Asia/Colombo",
+    ),
 });
 
 const parsed = schema.safeParse(process.env);
