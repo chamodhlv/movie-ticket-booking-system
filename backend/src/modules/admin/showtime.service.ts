@@ -7,6 +7,7 @@ import { Hall } from "../catalog/hall.model";
 import { Movie } from "../catalog/movie.model";
 import { Showtime } from "../catalog/showtime.model";
 import type { ShowtimeInput } from "./admin.schemas";
+import { BookedSeat } from "../booking/bookedSeat.model";
 
 const BUFFER_MINUTES = 20; // cleaning + ads between two shows in the same hall
 
@@ -20,11 +21,11 @@ export async function saveShowtime(
   if (existingId) {
     const existing = await Showtime.findById(existingId).lean();
     if (!existing) throw new HttpError(404, "Showtime not found");
-    // TODO(booking part): also refuse the edit when bookings exist for this showtime
-    if (existing.startTime < now)
+    // Tickets already sold for this show would silently change meaning, so refuse.
+    if (await BookedSeat.exists({ showtime: existingId }))
       throw new HttpError(
         409,
-        "A showtime that already started can't be edited",
+        "This showtime already has bookings, so it can't be edited",
       );
   }
   if (input.startTime < now)

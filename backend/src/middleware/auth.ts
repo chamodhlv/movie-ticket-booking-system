@@ -35,3 +35,18 @@ export const requireRole =
     }
     next();
   };
+
+// Like requireAuth, but for pages anyone may see. A valid cookie fills `req.user`; a missing or
+// bad one simply leaves it empty and the request continues. (The seat map uses this: visitors
+// can look, and logged-in users additionally get "these are YOUR held seats".)
+export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.accessToken;
+  if (token) {
+    try {
+      req.user = verifyAccessToken(token);
+    } catch {
+      // Expired or invalid: treat the visitor as logged out.
+    }
+  }
+  next();
+}

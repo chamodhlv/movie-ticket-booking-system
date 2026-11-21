@@ -11,6 +11,7 @@ import { authRouter } from "./modules/auth/auth.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { catalogRouter } from "./modules/catalog/catalog.routes";
 import { adminRouter } from "./modules/admin/admin.routes";
+import { seatsRouter } from "./modules/booking/seats.routes";
 
 // WHY app.ts AND server.ts ARE SEPARATE:
 // app.ts only builds the Express app (routes, middleware) and does NOT start listening.
@@ -48,6 +49,7 @@ app.get("/ready", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", catalogRouter); // /api/movies, /api/cities, /api/showtimes/:id, ...
+app.use("/api/showtimes", seatsRouter); // /api/showtimes/:id/seats and /hold (before catalogRouter)
 
 // Unknown URL
 app.use((_req, res) => {
