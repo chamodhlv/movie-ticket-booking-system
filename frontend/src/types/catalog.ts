@@ -16,6 +16,7 @@ export type Cinema = {
   name: string;
   city: string;
   address: string;
+  phone?: string;
 };
 
 // Prices are WHOLE NUMBERS IN MINOR UNITS (cents), exactly as the backend stores them.
