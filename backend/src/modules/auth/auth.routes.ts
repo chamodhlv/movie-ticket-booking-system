@@ -76,13 +76,3 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   if (!user) throw new HttpError(401, "User no longer exists");
   res.json({ user: toPublicUser(user) });
 });
-
-// TEMPORARY: only to test the role guard in Step 26. We'll delete it later.
-authRouter.get(
-  "/admin-check",
-  requireAuth,
-  requireRole("admin"),
-  (_req, res) => {
-    res.json({ message: "You are an admin" });
-  },
-);
