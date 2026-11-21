@@ -8,7 +8,9 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
-    "seed:catalog": "tsx src/scripts/seedCatalog.ts"
+    "seed:catalog": "tsx src/scripts/seedCatalog.ts",
+    "seed:booked": "tsx src/scripts/seedBooked.ts",
+    "test:holds": "tsx src/scripts/holdsTest.ts"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +30,7 @@
     "mongoose": "^9.12.2",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
+    "socket.io": "^4.8.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {

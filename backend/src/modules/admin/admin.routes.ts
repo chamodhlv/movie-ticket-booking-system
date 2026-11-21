@@ -19,6 +19,7 @@ import {
 } from "./admin.schemas";
 import { countSeats, layoutSignature } from "./hall.service";
 import { saveShowtime } from "./showtime.service";
+import { BookedSeat } from "../booking/bookedSeat.model";
 
 export const adminRouter = Router();
 
@@ -236,10 +237,14 @@ adminRouter.put(
 );
 
 adminRouter.delete("/showtimes/:id", async (req, res) => {
-  // TODO(booking part): once bookings exist, refuse when any exist, or cancel + refund them.
-  const deleted = await Showtime.findByIdAndDelete(
-    parseObjectId(req.params.id),
-  );
+  const id = parseObjectId(req.params.id);
+  // Part 11 replaces this with "cancel the show and refund every booking".
+  if (await BookedSeat.exists({ showtime: id }))
+    throw new HttpError(
+      409,
+      "This showtime has bookings and can't be deleted (cancelling with refunds comes in Part 11)",
+    );
+  const deleted = await Showtime.findByIdAndDelete(id);
   if (!deleted) throw new HttpError(404, "Showtime not found");
   res.status(204).end();
 });
