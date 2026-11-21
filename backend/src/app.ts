@@ -10,6 +10,7 @@ import { redis } from "./config/redis";
 import { authRouter } from "./modules/auth/auth.routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { catalogRouter } from "./modules/catalog/catalog.routes";
+import { adminRouter } from "./modules/admin/admin.routes";
 
 // WHY app.ts AND server.ts ARE SEPARATE:
 // app.ts only builds the Express app (routes, middleware) and does NOT start listening.
@@ -45,6 +46,7 @@ app.get("/ready", (_req, res) => {
 
 // All business routes live under /api
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api", catalogRouter); // /api/movies, /api/cities, /api/showtimes/:id, ...
 
 // Unknown URL
