@@ -82,25 +82,44 @@ export function closeSocket(done: () => void) {
   void io.close(done);
 }
 
-// ---- emit helpers: no-ops when sockets aren't running (scripts, tests) ----
+// `exceptSocketId`: the browser that CAUSED the change already updated itself from the HTTP
+// response, so we skip it. (Otherwise its own click would come back as an "event" and, if it
+// arrives late, could undo the user's next click.) Every socket is automatically in a room
+// named after its own id, so ".except(id)" means "everyone in the room except that browser".
+function toRoom(showtimeId: string, exceptSocketId?: string) {
+  const target = io!.to(roomOf(showtimeId));
+  return exceptSocketId ? target.except(exceptSocketId) : target;
+}
 
 export function emitSeatsHeld(
   showtimeId: string,
   seatIds: string[],
   expiresAt: number,
+  exceptSocketId?: string,
 ) {
-  io?.to(roomOf(showtimeId)).emit("seat:held", {
+  if (!io) return;
+  toRoom(showtimeId, exceptSocketId).emit("seat:held", {
     showtimeId,
     seatIds,
     expiresAt,
   });
 }
 
-export function emitSeatsReleased(showtimeId: string, seatIds: string[]) {
-  io?.to(roomOf(showtimeId)).emit("seat:released", { showtimeId, seatIds });
+export function emitSeatsReleased(
+  showtimeId: string,
+  seatIds: string[],
+  exceptSocketId?: string,
+) {
+  if (!io) return;
+  toRoom(showtimeId, exceptSocketId).emit("seat:released", {
+    showtimeId,
+    seatIds,
+  });
 }
 
-// Called by the payment code in Part 9 once seats are sold.
+// Called by the payment code in Part 9 once seats are sold. Nobody is excluded:
+// even the buyer's own screen should hear that the seats are now sold.
 export function emitSeatsBooked(showtimeId: string, seatIds: string[]) {
-  io?.to(roomOf(showtimeId)).emit("seat:booked", { showtimeId, seatIds });
+  if (!io) return;
+  toRoom(showtimeId).emit("seat:booked", { showtimeId, seatIds });
 }

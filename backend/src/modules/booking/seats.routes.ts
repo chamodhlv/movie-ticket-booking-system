@@ -44,6 +44,11 @@ const holdLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// The browser sends its Socket.IO id in this header, so we don't echo its own action back to it
+// (see emitSeatsHeld). A made-up value is harmless: it just matches no connection.
+const socketIdOf = (req: { header(name: string): string | undefined }) =>
+  req.header("x-socket-id")?.slice(0, 64);
+
 // The showtime + the set of seat ids that really exist in its hall.
 async function loadShowtimeSeats(rawId: string | string[] | undefined) {
   const id = parseObjectId(rawId);
@@ -126,7 +131,12 @@ seatsRouter.post("/:id/hold", requireAuth, holdLimiter, async (req, res) => {
 
   // Tell everyone watching this showtime (only about seats that are newly held).
   if (result.newSeatIds.length)
-    emitSeatsHeld(showtimeId, result.newSeatIds, result.expiresAt);
+    emitSeatsHeld(
+      showtimeId,
+      result.newSeatIds,
+      result.expiresAt,
+      socketIdOf(req),
+    );
 
   res.json({ seatIds: result.mySeatIds, expiresAt: result.expiresAt });
 });
@@ -141,6 +151,6 @@ seatsRouter.delete("/:id/hold", requireAuth, holdLimiter, async (req, res) => {
     ? await releaseSeats(showtimeId, req.user!.id, seatIds)
     : await releaseAllSeats(showtimeId, req.user!.id);
 
-  if (released.length) emitSeatsReleased(showtimeId, released);
+  if (released.length) emitSeatsReleased(showtimeId, released, socketIdOf(req));
   res.json({ released });
 });
