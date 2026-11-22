@@ -13,6 +13,7 @@ import AdminCinemasPage from "./pages/admin/AdminCinemasPage";
 import AdminHallsPage from "./pages/admin/AdminHallsPage";
 import AdminHallFormPage from "./pages/admin/AdminHallFormPage";
 import AdminShowtimesPage from "./pages/admin/AdminShowtimesPage";
+import SeatSelectionPage from "./pages/SeatSelectionPage";
 
 export default function App() {
   return (
@@ -22,15 +23,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/movies/:id" element={<MovieDetailPage />} />
-        {/* Placeholder until we build the seat map in a later part */}
-        <Route
-          path="/showtimes/:id"
-          element={
-            <p className="p-6 text-slate-300">
-              Seat selection comes in a later part.
-            </p>
-          }
-        />
+        {/* Public: visitors can look at the seat map; holding seats needs a login */}
+        <Route path="/showtimes/:id" element={<SeatSelectionPage />} />
 
         {/* Any logged-in user */}
         <Route element={<ProtectedRoute />}>
