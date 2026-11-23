@@ -22,6 +22,18 @@ const schema = z.object({
       (tz) => DateTime.local().setZone(tz).isValid,
       "must be a valid IANA timezone, e.g. Asia/Colombo",
     ),
+  // Stripe (payments). Test-mode keys look like sk_test_... and whsec_...
+  // The secret key lets the SERVER create payments: it must never reach the browser or git.
+  STRIPE_SECRET_KEY: z
+    .string()
+    .startsWith("sk_", "must be a Stripe secret key (sk_test_...)"),
+  // Used to check that a webhook request really came from Stripe (see webhook.ts).
+  STRIPE_WEBHOOK_SECRET: z
+    .string()
+    .startsWith(
+      "whsec_",
+      "must be a Stripe webhook signing secret (whsec_...)",
+    ),
 });
 
 const parsed = schema.safeParse(process.env);
