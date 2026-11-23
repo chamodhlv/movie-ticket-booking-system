@@ -1,5 +1,9 @@
 import { redis } from "../../config/redis";
-import { HOLD_TTL_MS, MAX_SEATS_PER_BOOKING } from "./booking.constants";
+import {
+  CHECKOUT_MIN_HOLD_MS,
+  HOLD_TTL_MS,
+  MAX_SEATS_PER_BOOKING,
+} from "./booking.constants";
 
 // =============================================================================
 // SEAT HOLDS IN REDIS
@@ -145,12 +149,52 @@ end
 return { now, out }
 `;
 
+// ONE-TIME EXTENSION for checkout. When a user clicks "Continue to payment" they may have only
+// seconds left on their hold, which isn't enough to type a card number. This gives them at
+// least `minRemaining` ms, but ONLY ONCE per hold (a "grace" flag remembers it), otherwise
+// someone could keep seats forever by pressing Continue / Back over and over.
+// KEYS[1] = holds zset, KEYS[2] = owners hash, KEYS[3] = this user's seat set, KEYS[4] = grace flag
+// ARGV[1] = minimum remaining ms
+// Returns { deadline, now, seatIdsList }. deadline is 0 (and the list empty) if the user holds nothing.
+const PREPARE_CHECKOUT_LUA = `${LUA_PRELUDE}
+local zset, owners, userSeats, graceKey = KEYS[1], KEYS[2], KEYS[3], KEYS[4]
+local now = nowMs()
+sweep(zset, owners, now)
+
+local mine = redis.call('SMEMBERS', userSeats)
+if #mine == 0 then return { 0, now, {} } end
+
+local score = redis.call('ZSCORE', zset, mine[1])
+local deadline = 0
+if score then deadline = tonumber(score) end
+
+local wanted = now + tonumber(ARGV[1])
+if deadline < wanted and redis.call('EXISTS', graceKey) == 0 then
+  deadline = wanted
+  for _, seatId in ipairs(mine) do
+    redis.call('ZADD', zset, deadline, seatId)   -- same seats, later deadline
+  end
+  redis.call('PEXPIREAT', userSeats, deadline)
+  redis.call('SET', graceKey, '1', 'PXAT', deadline)
+  local remaining = deadline - now
+  if redis.call('PTTL', zset) < remaining then
+    redis.call('PEXPIRE', zset, remaining)
+    redis.call('PEXPIRE', owners, remaining)
+  end
+end
+return { deadline, now, mine }
+`;
+
 // defineCommand registers each script with ioredis. It sends the script's hash (EVALSHA)
 // instead of the whole text on every call, and re-sends the text automatically if Redis
 // forgot it (e.g. after a restart). We type the new methods ourselves below.
 redis.defineCommand("holdSeatsLua", { numberOfKeys: 3, lua: HOLD_LUA });
 redis.defineCommand("releaseSeatsLua", { numberOfKeys: 3, lua: RELEASE_LUA });
 redis.defineCommand("listHoldsLua", { numberOfKeys: 2, lua: LIST_LUA });
+redis.defineCommand("prepareCheckoutLua", {
+  numberOfKeys: 4,
+  lua: PREPARE_CHECKOUT_LUA,
+});
 
 type ScriptArg = string | number;
 type ScriptCommands = {
@@ -159,6 +203,7 @@ type ScriptCommands = {
   ): Promise<[number, number, string[], string[]]>;
   releaseSeatsLua(...args: ScriptArg[]): Promise<string[]>;
   listHoldsLua(...args: ScriptArg[]): Promise<[number, string[]]>;
+  prepareCheckoutLua(...args: ScriptArg[]): Promise<[number, number, string[]]>;
 };
 const scripts = redis as unknown as ScriptCommands;
 
@@ -235,4 +280,20 @@ export async function listHolds(
     });
   }
   return { now, holds };
+}
+
+// The user clicked "Continue to payment": return the seats they hold right now, with a deadline
+// that leaves time to pay (extended once, see above). Empty `seatIds` = they hold nothing.
+export async function prepareCheckoutHolds(
+  showtimeId: string,
+  userId: string,
+): Promise<{ seatIds: string[]; deadline: number; now: number }> {
+  const [deadline, now, seatIds] = await scripts.prepareCheckoutLua(
+    zsetKey(showtimeId),
+    ownersKey(showtimeId),
+    userKey(showtimeId, userId),
+    `holdgrace:{${showtimeId}}:${userId}`,
+    CHECKOUT_MIN_HOLD_MS,
+  );
+  return { seatIds, deadline, now };
 }

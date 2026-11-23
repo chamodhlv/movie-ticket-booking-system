@@ -12,6 +12,8 @@ import { errorHandler } from "./middleware/errorHandler";
 import { catalogRouter } from "./modules/catalog/catalog.routes";
 import { adminRouter } from "./modules/admin/admin.routes";
 import { seatsRouter } from "./modules/booking/seats.routes";
+import { paymentsRouter } from "./modules/payments/payments.routes";
+import { stripeWebhook } from "./modules/payments/webhook";
 
 // WHY app.ts AND server.ts ARE SEPARATE:
 // app.ts only builds the Express app (routes, middleware) and does NOT start listening.
@@ -22,6 +24,14 @@ export const app = express();
 app.use(helmet());
 // credentials: true is needed later so the browser can send our login cookie.
 app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+// STRIPE WEBHOOK: must be registered BEFORE express.json(). Stripe's signature is computed over
+// the exact raw bytes of the body, and express.json() would replace them with parsed JSON.
+// express.raw() keeps the body as a Buffer for this one route.
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook,
+);
 app.use(express.json());
 app.use(pinoHttp({ logger })); // logs every request
 app.use(cookieParser()); // fills req.cookies
@@ -49,6 +59,7 @@ app.get("/ready", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", catalogRouter); // /api/movies, /api/cities, /api/showtimes/:id, ...
+app.use("/api", paymentsRouter); // /api/showtimes/:id/checkout, /api/checkouts/:id
 app.use("/api/showtimes", seatsRouter); // /api/showtimes/:id/seats and /hold (before catalogRouter)
 
 // Unknown URL

@@ -7,7 +7,7 @@ import { SEAT_TYPES } from "../catalog/catalog.constants";
 // The seats are COPIED into the booking (id, type and the price paid) instead of only
 // pointing at the hall. Reason: admins can later change prices or layouts, but a ticket
 // someone already paid for must never change.
-const bookingSeatSchema = new Schema(
+export const bookingSeatSchema = new Schema(
   {
     seatId: { type: String, required: true }, // "A5"
     type: { type: String, enum: [...SEAT_TYPES], required: true },
@@ -23,8 +23,11 @@ const bookingSchema = new Schema(
     seats: { type: [bookingSeatSchema], required: true },
     totalAmount: { type: Number, required: true, min: 0 }, // minor units, sum of seat prices
     currency: { type: String, required: true }, // "LKR"
-    // Part 9 adds payment fields (provider id, ...), Part 10 adds the ticket token,
-    // Part 11 uses the cancelled status.
+    // The Stripe PaymentIntent that paid for this booking. It is how the webhook recognises
+    // "I already processed this payment" (see the unique index below). It is optional only
+    // because the dev helper `seed:booked` creates bookings without a real payment.
+    paymentIntentId: { type: String },
+    // Part 10 adds the ticket token, Part 11 uses the cancelled status.
     status: {
       type: String,
       enum: ["confirmed", "cancelled", "used"],
@@ -36,5 +39,15 @@ const bookingSchema = new Schema(
 
 bookingSchema.index({ user: 1, createdAt: -1 }); // "my bookings", newest first
 bookingSchema.index({ showtime: 1 }); // "all bookings of this show"
+// One booking per payment, enforced by the database. If Stripe delivers the same webhook twice
+// (it does that on purpose when it doesn't get an answer in time), the second insert is rejected
+// instead of creating a second booking. "partial" = only applies to bookings that HAVE a payment id.
+bookingSchema.index(
+  { paymentIntentId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { paymentIntentId: { $type: "string" } },
+  },
+);
 
 export const Booking = model("Booking", bookingSchema);
