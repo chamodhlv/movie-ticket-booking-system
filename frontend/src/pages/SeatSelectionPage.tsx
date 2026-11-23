@@ -262,20 +262,11 @@ export default function SeatSelectionPage() {
               </p>
               <div className="space-y-2">
                 <button
-                  disabled
-                  className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium opacity-50"
-                  title="Payment is built in Part 9"
+                  onClick={() => navigate(`/checkout/${id}`)}
+                  disabled={!!closedReason}
+                  className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
                 >
                   Continue to payment
-                </button>
-                <p className="text-center text-xs text-slate-500">
-                  Payment comes in the next part.
-                </p>
-                <button
-                  onClick={handleReleaseAll}
-                  className={`${btnSecondary} w-full`}
-                >
-                  Release all seats
                 </button>
               </div>
             </>

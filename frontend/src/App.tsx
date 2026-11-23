@@ -14,6 +14,7 @@ import AdminHallsPage from "./pages/admin/AdminHallsPage";
 import AdminHallFormPage from "./pages/admin/AdminHallFormPage";
 import AdminShowtimesPage from "./pages/admin/AdminShowtimesPage";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
+import CheckoutPage from "./pages/CheckoutPage";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
 
         {/* Any logged-in user */}
         <Route element={<ProtectedRoute />}>
+          <Route path="/checkout/:showtimeId" element={<CheckoutPage />} />
           <Route path="/account" element={<AccountPage />} />
         </Route>
 
