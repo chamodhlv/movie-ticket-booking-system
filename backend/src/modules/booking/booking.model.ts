@@ -28,11 +28,20 @@ const bookingSchema = new Schema(
     // because the dev helper `seed:booked` creates bookings without a real payment.
     paymentIntentId: { type: String },
     // Part 10 adds the ticket token, Part 11 uses the cancelled status.
+    // confirmed = paid and not yet scanned at the door
+    // used      = scanned by staff (the ticket can't be used a second time)
+    // cancelled = cancelled and refunded (Part 11)
     status: {
       type: String,
       enum: ["confirmed", "cancelled", "used"],
       default: "confirmed",
     },
+    // Set by the staff scanner (Part 10) at the moment the ticket is accepted.
+    usedAt: { type: Date },
+    usedBy: { type: Schema.Types.ObjectId, ref: "User" }, // which staff member scanned it
+    // Set by the e-mail worker once the ticket e-mail was really sent, so a retried job can't
+    // send the customer a second copy.
+    ticketEmailSentAt: { type: Date },
   },
   { timestamps: true },
 );

@@ -18,6 +18,16 @@ const dayLabelFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
 });
+
+// "Saturday, December 5, 2026": used on the ticket
+const longDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: APP_TIMEZONE,
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
 const timeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: APP_TIMEZONE,
   hour: "numeric",
@@ -43,6 +53,9 @@ export function upcomingDays(count = 7) {
 export const formatDayLabel = (iso: string) =>
   dayLabelFormatter.format(new Date(iso));
 export const formatTime = (iso: string) => timeFormatter.format(new Date(iso));
+
+export const formatLongDate = (iso: string) =>
+  longDateFormatter.format(new Date(iso));
 
 // Backend sends minor units (cents). This assumes a currency with 2 decimals (LKR, USD...).
 export const formatMoney = (minorUnits: number) =>
