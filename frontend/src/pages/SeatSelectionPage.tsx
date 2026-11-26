@@ -268,6 +268,12 @@ export default function SeatSelectionPage() {
                 >
                   Continue to payment
                 </button>
+                <button
+                  onClick={handleReleaseAll}
+                  className={`${btnSecondary} w-full`}
+                >
+                  Release all seats
+                </button>
               </div>
             </>
           )}

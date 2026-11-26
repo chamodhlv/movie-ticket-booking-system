@@ -15,6 +15,9 @@ import AdminHallFormPage from "./pages/admin/AdminHallFormPage";
 import AdminShowtimesPage from "./pages/admin/AdminShowtimesPage";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import TicketPage from "./pages/TicketPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import StaffScanPage from "./pages/StaffScanPage";
 
 export default function App() {
   return (
@@ -30,7 +33,13 @@ export default function App() {
         {/* Any logged-in user */}
         <Route element={<ProtectedRoute />}>
           <Route path="/checkout/:showtimeId" element={<CheckoutPage />} />
+          <Route path="/tickets/:bookingId" element={<TicketPage />} />
           <Route path="/account" element={<AccountPage />} />
+        </Route>
+
+        {/* Door staff (and admins, who can do everything staff can) */}
+        <Route element={<ProtectedRoute roles={["staff", "admin"]} />}>
+          <Route path="/staff/scan" element={<StaffScanPage />} />
         </Route>
 
         {/* Admins only. AdminLayout draws the sidebar; each child renders at its <Outlet /> */}
@@ -45,6 +54,7 @@ export default function App() {
             <Route path="halls/new" element={<AdminHallFormPage />} />
             <Route path="halls/:id" element={<AdminHallFormPage />} />
             <Route path="showtimes" element={<AdminShowtimesPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
           </Route>
         </Route>
 

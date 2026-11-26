@@ -9,6 +9,7 @@ import type {
   MovieInput,
   ShowtimeInput,
 } from "../types/admin";
+import type { AdminUser, AdminUserPage } from "../types/admin";
 
 // Every call here goes to /api/admin/... (admin role required by the backend), except
 // the movie and cinema LISTS, which reuse the public endpoints.
@@ -91,4 +92,20 @@ export async function updateShowtime(id: string, input: ShowtimeInput) {
 }
 export async function deleteShowtime(id: string) {
   await api.delete(`/api/admin/showtimes/${id}`);
+}
+
+// ---------- Users ----------
+export async function fetchAdminUsers(params: {
+  search?: string;
+  page: number;
+}) {
+  return (await api.get<AdminUserPage>("/api/admin/users", { params })).data;
+}
+// Only customer <-> staff. The server refuses "admin" and refuses to touch admin accounts.
+export async function setUserRole(id: string, role: "customer" | "staff") {
+  return (
+    await api.patch<{ user: AdminUser }>(`/api/admin/users/${id}/role`, {
+      role,
+    })
+  ).data.user;
 }

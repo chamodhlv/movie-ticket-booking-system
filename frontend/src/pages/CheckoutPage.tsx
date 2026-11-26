@@ -10,13 +10,14 @@ import { Elements } from "@stripe/react-stripe-js";
 import { fetchShowtimeDetail } from "../api/booking";
 import { cancelCheckout, fetchCheckout, startCheckout } from "../api/checkout";
 import { getErrorMessage } from "../api/errors";
-import { btnSecondary } from "../components/admin/styles";
 import HoldCountdown from "../components/HoldCountdown";
 import PaymentForm from "../components/PaymentForm";
 import { useServerNow } from "../hooks/useServerNow";
 import { formatDayLabel, formatMoney, formatTime } from "../lib/dates";
 import { stripePromise } from "../lib/stripe";
 import type { CheckoutStatus } from "../types/checkout";
+import { useAuth } from "../auth/auth-context";
+import { btnPrimary, btnSecondary } from "../components/admin/styles";
 
 export default function CheckoutPage() {
   const { showtimeId = "" } = useParams();
@@ -203,6 +204,8 @@ function PaymentOutcome({
   status: CheckoutStatus | undefined;
   backLink: ReactNode;
 }) {
+  const { user } = useAuth();
+
   if (!status || status.status === "pending")
     return (
       <div className="rounded-2xl bg-slate-900 p-6 text-center">
@@ -239,12 +242,19 @@ function PaymentOutcome({
           <span>Paid</span>
           <span>{formatMoney(status.totalAmount)}</span>
         </p>
-        <Link
-          to="/"
-          className="mt-5 inline-block text-emerald-400 hover:underline"
-        >
-          Back to movies
-        </Link>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {status.bookingId && (
+            <Link to={`/tickets/${status.bookingId}`} className={btnPrimary}>
+              View your ticket
+            </Link>
+          )}
+          <Link to="/" className={btnSecondary}>
+            Back to movies
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-slate-500">
+          We're also e-mailing your ticket to {user?.email}.
+        </p>
       </div>
     );
 

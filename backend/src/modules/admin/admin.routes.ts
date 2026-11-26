@@ -20,8 +20,12 @@ import {
 import { countSeats, layoutSignature } from "./hall.service";
 import { saveShowtime } from "./showtime.service";
 import { BookedSeat } from "../booking/bookedSeat.model";
+import { adminUsersRouter } from "./users.routes";
 
 export const adminRouter = Router();
+
+// ====================== USERS (make someone staff) ======================
+adminRouter.use("/users", adminUsersRouter);
 
 // Registered ONCE for the whole router, so a route added later can't forget the check.
 // (Staff cannot use these; the "staff" role is for scanning tickets later.)

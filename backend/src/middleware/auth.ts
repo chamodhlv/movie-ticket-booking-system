@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "../modules/auth/tokens";
 import { HttpError } from "../utils/httpError";
+import { User } from "../modules/users/user.model";
 
 // Tell TypeScript that after requireAuth runs, `req.user` exists.
 declare global {
@@ -33,6 +34,24 @@ export const requireRole =
     if (!req.user || !roles.includes(req.user.role)) {
       throw new HttpError(403, "Forbidden");
     }
+    next();
+  };
+
+// Like requireRole, but asks the DATABASE for the role instead of trusting the login token.
+// HARD PART: the role is copied into the access token when it is created and the token lives
+// 15 minutes. If an admin makes someone staff (or removes them), requireRole would keep
+// believing the OLD role for up to 15 minutes. Use this one where that delay matters: the ticket
+// scanner. It costs one tiny lookup by id per request.
+export const requireFreshRole =
+  (...roles: string[]) =>
+  async (req: Request, _res: Response, next: NextFunction) => {
+    const user = req.user
+      ? await User.findById(req.user.id).select("role").lean()
+      : null;
+    if (!user || !roles.includes(user.role)) {
+      throw new HttpError(403, "Forbidden");
+    }
+    req.user!.role = user.role; // from here on the request carries the real, current role
     next();
   };
 

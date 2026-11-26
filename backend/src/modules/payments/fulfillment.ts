@@ -7,6 +7,8 @@ import { BookedSeat } from "../booking/bookedSeat.model";
 import { Booking } from "../booking/booking.model";
 import { releaseSeats } from "../booking/holds";
 import { Checkout } from "./checkout.model";
+import { enqueueTicketEmail } from "../../queues/emailQueue";
+import { createUniqueManualCode } from "../tickets/manualCode";
 
 // =============================================================================
 // TURNING A PAID PAYMENT INTO A BOOKING. This runs ONLY from Stripe's webhook, never because the
@@ -26,6 +28,15 @@ import { Checkout } from "./checkout.model";
 function isDuplicateKey(err: unknown) {
   const e = err as { code?: number; cause?: { code?: number } };
   return e?.code === 11000 || e?.cause?.code === 11000;
+}
+
+// Same error, but caused by one SPECIFIC unique index (MongoDB names the field in keyPattern).
+function isDuplicateOn(err: unknown, field: string) {
+  const e = err as {
+    keyPattern?: Record<string, unknown>;
+    cause?: { keyPattern?: Record<string, unknown> };
+  };
+  return !!(e?.keyPattern?.[field] ?? e?.cause?.keyPattern?.[field]);
 }
 
 // Thrown inside the transaction when someone else already finished this checkout.
@@ -64,6 +75,14 @@ export async function fulfillPayment(
 
   const showtimeId = checkout.showtime.toString();
   const seatIds = checkout.seats.map((s) => s.seatId);
+  // Filled in inside the transaction below, used after it. The "!" tells TypeScript "I promise this
+  // is assigned before it is read": it is, because the only way to reach the code that reads it
+  // is for the transaction to have finished without throwing.
+  let bookingId!: string;
+  // The short code for the ticket. Made BEFORE the transaction, on purpose: a duplicate-key error
+  // inside it is read as "someone else bought the seat", so we make sure the code is already
+  // unique and that error can't come from here.
+  const manualCode = await createUniqueManualCode();
   const session = await mongoose.startSession();
   try {
     // withTransaction retries by itself on harmless transient conflicts, e.g. when two copies of
@@ -78,11 +97,13 @@ export async function fulfillPayment(
             totalAmount: checkout.totalAmount,
             currency: checkout.currency,
             paymentIntentId: pi.id,
+            manualCode,
             status: "confirmed",
           },
         ],
         { session },
       );
+      bookingId = booking._id.toString();
       // If ANY seat is already sold, this throws a duplicate-key error and the whole transaction
       // (including the booking above) is rolled back as if nothing happened.
       await BookedSeat.insertMany(
@@ -102,6 +123,10 @@ export async function fulfillPayment(
     });
   } catch (err) {
     if (err instanceof AlreadyProcessed) return "already_done";
+    // Two payments drew the SAME manual code in the same instant (about 1 in a trillion). That is
+    // NOT a seat conflict, so never refund for it: fail, and Stripe re-sends the webhook, which
+    // draws a new code.
+    if (isDuplicateOn(err, "manualCode")) throw err;
     if (!isDuplicateKey(err)) throw err; // a real failure: let Stripe retry the webhook later
 
     // Duplicate key: either THIS payment was already turned into a booking by a parallel copy of
@@ -123,22 +148,35 @@ export async function fulfillPayment(
     await session.endSession();
   }
 
-  await afterBooked(showtimeId, checkout.user.toString(), seatIds);
+  await afterBooked(showtimeId, checkout.user.toString(), seatIds, bookingId);
   return "booked";
 }
 
 // Best-effort tidying AFTER the booking is safely committed. A failure here must not undo the
 // booking, so errors are only logged. (Part 10 will also queue the ticket e-mail here.)
+// Best-effort tidying AFTER the booking is safely committed. A failure here must not undo the
+// booking, so errors are only logged. Each step has its OWN try/catch so that one failing
+// (say Redis is down) doesn't stop the others.
 async function afterBooked(
   showtimeId: string,
   userId: string,
   seatIds: string[],
+  bookingId: string,
 ) {
   try {
     await releaseSeats(showtimeId, userId, seatIds); // the seats are sold: drop our Redis holds
     emitSeatsBooked(showtimeId, seatIds); // everyone watching sees them turn "booked"
   } catch (err) {
     logger.error({ err, showtimeId }, "Post-booking cleanup failed");
+  }
+
+  try {
+    // Queue the ticket e-mail. We do NOT send it here: the webhook must answer Stripe fast, and
+    // the queue worker retries if sending fails. If even queueing fails the customer still has
+    // the ticket page; only the e-mail is missing (npm run email:test can re-send it).
+    await enqueueTicketEmail(bookingId);
+  } catch (err) {
+    logger.error({ err, bookingId }, "Could not queue the ticket e-mail");
   }
 }
 
