@@ -62,3 +62,18 @@ export type ShowtimeInput = {
   format: string;
   prices: Partial<Record<SeatType, number>>; // cents
 };
+
+// GET /api/admin/users
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "customer" | "staff" | "admin";
+  createdAt: string;
+};
+export type AdminUserPage = {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+};

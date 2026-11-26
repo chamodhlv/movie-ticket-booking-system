@@ -35,6 +35,11 @@ export default function Navbar() {
 
           {user && (
             <>
+              {(user.role === "staff" || user.role === "admin") && (
+                <Link to="/staff/scan" className="hover:text-emerald-400">
+                  Scan tickets
+                </Link>
+              )}
               {user.role === "admin" && (
                 <Link to="/admin" className="hover:text-emerald-400">
                   Admin

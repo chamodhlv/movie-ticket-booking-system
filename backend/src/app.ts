@@ -15,6 +15,7 @@ import { seatsRouter } from "./modules/booking/seats.routes";
 import { paymentsRouter } from "./modules/payments/payments.routes";
 import { stripeWebhook } from "./modules/payments/webhook";
 import { ticketsRouter } from "./modules/tickets/tickets.routes";
+import { staffRouter } from "./modules/tickets/scan.routes";
 
 // WHY app.ts AND server.ts ARE SEPARATE:
 // app.ts only builds the Express app (routes, middleware) and does NOT start listening.
@@ -63,6 +64,7 @@ app.use("/api", catalogRouter); // /api/movies, /api/cities, /api/showtimes/:id,
 app.use("/api", paymentsRouter); // /api/showtimes/:id/checkout, /api/checkouts/:id
 app.use("/api", ticketsRouter); // /api/bookings/:id (the ticket)
 app.use("/api/showtimes", seatsRouter); // /api/showtimes/:id/seats and /hold (before catalogRouter)
+app.use("/api/staff", staffRouter); // /api/staff/tickets/scan (door staff)
 
 // Unknown URL
 app.use((_req, res) => {

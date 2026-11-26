@@ -30,6 +30,6 @@ export type TicketResponse = {
   };
   cinema: { name: string; city: string; address: string };
   hall: { name: string };
-  // Only a ticket that can still get you in has a QR code (not used / cancelled ones).
-  ticket: { token: string; qrDataUrl: string } | null;
+  // manualCode is the backup code staff can type, e.g. "K7M2-9QXP".
+  ticket: { token: string; qrDataUrl: string; manualCode: string } | null;
 };

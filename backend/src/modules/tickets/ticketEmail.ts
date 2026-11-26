@@ -13,6 +13,7 @@ import {
   type TicketData,
 } from "./ticket.service";
 import { createTicketToken } from "./ticketToken";
+import { formatManualCode } from "./manualCode";
 
 // The <img> in the HTML points at "cid:ticket-qr". CID = "content id": it refers to the
 // attachment that carries the same contentId. That makes the QR part of the e-mail itself, so
@@ -55,7 +56,16 @@ const sortSeats = (ids: string[]) =>
 // `qrSrc` is what goes in <img src>: "cid:ticket-qr" for a real e-mail, or a data: URL when we
 // preview the e-mail in a browser (see scripts/sendTicketEmail.ts).
 export function buildTicketEmail(data: TicketData, qrSrc: string) {
-  const { booking, showtime, movie, cinema, hall, user } = data;
+  const {
+    booking,
+    manualCode: rawCode,
+    showtime,
+    movie,
+    cinema,
+    hall,
+    user,
+  } = data;
+  const manualCode = formatManualCode(rawCode);
 
   // Show the time the way the cinema's clock shows it, not the server's.
   const start = DateTime.fromJSDate(showtime.startTime).setZone(
@@ -108,7 +118,8 @@ export function buildTicketEmail(data: TicketData, qrSrc: string) {
           <tr><td align="center" style="padding:0 24px 24px;">
             <img src="${qrSrc}" width="220" height="220" alt="Ticket QR code" style="display:block;border:1px solid #e5e7eb;border-radius:8px;">
             <p style="margin:12px 0 0;color:#111827;font-size:14px;">Booking reference <strong>${reference}</strong></p>
-            <p style="margin:8px 0 20px;color:#6b7280;font-size:12px;">Show this QR code at the entrance. Don't share it: whoever is scanned first gets in.</p>
+            <p style="margin:8px 0 4px;color:#6b7280;font-size:12px;">Show this QR code at the entrance. Don't share it: whoever is scanned first gets in.</p>
+            <p style="margin:0 0 20px;color:#6b7280;font-size:12px;">If the QR code won't scan, tell the staff this code: <strong style="font-family:Consolas,monospace;font-size:14px;color:#111827;letter-spacing:1px;">${manualCode}</strong></p>
             <a href="${ticketUrl}" style="display:inline-block;background:#e11d48;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:8px;">View ticket online</a>
           </td></tr>
         </table>
@@ -126,6 +137,7 @@ export function buildTicketEmail(data: TicketData, qrSrc: string) {
     ...rows.map(([label, value]) => `${label}: ${value}`),
     "",
     `Booking reference: ${reference}`,
+    `Backup code if the QR won't scan: ${manualCode}`,
     `Your ticket (with the QR code to show at the entrance): ${ticketUrl}`,
   ].join("\n");
 

@@ -36,6 +36,10 @@ const bookingSchema = new Schema(
       enum: ["confirmed", "cancelled", "used"],
       default: "confirmed",
     },
+    // The short code ("K7M2-9QXP") printed under the QR code. If a camera can't read the QR, staff
+    // type this instead. unique = no two bookings share one; sparse = old bookings that were made
+    // before this field existed (no value at all) don't count as duplicates of each other.
+    manualCode: { type: String, unique: true, sparse: true },
     // Set by the staff scanner (Part 10) at the moment the ticket is accepted.
     usedAt: { type: Date },
     usedBy: { type: Schema.Types.ObjectId, ref: "User" }, // which staff member scanned it

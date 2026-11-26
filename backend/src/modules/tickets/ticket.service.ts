@@ -6,6 +6,7 @@ import { Hall } from "../catalog/hall.model";
 import { Movie } from "../catalog/movie.model";
 import { Showtime } from "../catalog/showtime.model";
 import { User } from "../users/user.model";
+import { ensureManualCode, formatManualCode } from "./manualCode";
 import { qrDataUrl } from "./qr";
 import { createTicketToken } from "./ticketToken";
 
@@ -25,6 +26,11 @@ export async function loadTicketData(bookingId: Types.ObjectId) {
   const booking = await Booking.findById(bookingId).lean();
   if (!booking) return null;
 
+  // New bookings get their code when they are created. Bookings made before manual codes existed
+  // get one the first time anything loads them (the page, the e-mail, the scanner).
+  const manualCode =
+    booking.manualCode ?? (await ensureManualCode(booking._id));
+
   const showtime = await Showtime.findById(booking.showtime).lean();
   if (!showtime) throw new Error(`Booking ${bookingId} has no showtime`);
 
@@ -38,7 +44,7 @@ export async function loadTicketData(bookingId: Types.ObjectId) {
   if (!movie || !cinema || !hall || !user)
     throw new Error(`Booking ${bookingId} has incomplete data`);
 
-  return { booking, showtime, movie, cinema, hall, user };
+  return { booking, manualCode, showtime, movie, cinema, hall, user };
 }
 
 export type TicketData = NonNullable<
@@ -61,7 +67,7 @@ export async function getTicketForViewer(
     (data.booking.user.toString() === viewer.id || viewer.role === "admin");
   if (!data || !allowed) throw new HttpError(404, "Booking not found");
 
-  const { booking, showtime, movie, cinema, hall } = data;
+  const { booking, manualCode, showtime, movie, cinema, hall } = data;
   const token = createTicketToken(booking._id.toString());
 
   return {
@@ -95,7 +101,11 @@ export async function getTicketForViewer(
     // shows its status instead (the page handles that).
     ticket:
       booking.status === "confirmed"
-        ? { token, qrDataUrl: await qrDataUrl(token) }
+        ? {
+            token,
+            qrDataUrl: await qrDataUrl(token),
+            manualCode: formatManualCode(manualCode), // "K7M2-9QXP"
+          }
         : null,
   };
 }

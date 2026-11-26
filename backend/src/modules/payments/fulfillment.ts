@@ -8,6 +8,7 @@ import { Booking } from "../booking/booking.model";
 import { releaseSeats } from "../booking/holds";
 import { Checkout } from "./checkout.model";
 import { enqueueTicketEmail } from "../../queues/emailQueue";
+import { createUniqueManualCode } from "../tickets/manualCode";
 
 // =============================================================================
 // TURNING A PAID PAYMENT INTO A BOOKING. This runs ONLY from Stripe's webhook, never because the
@@ -27,6 +28,15 @@ import { enqueueTicketEmail } from "../../queues/emailQueue";
 function isDuplicateKey(err: unknown) {
   const e = err as { code?: number; cause?: { code?: number } };
   return e?.code === 11000 || e?.cause?.code === 11000;
+}
+
+// Same error, but caused by one SPECIFIC unique index (MongoDB names the field in keyPattern).
+function isDuplicateOn(err: unknown, field: string) {
+  const e = err as {
+    keyPattern?: Record<string, unknown>;
+    cause?: { keyPattern?: Record<string, unknown> };
+  };
+  return !!(e?.keyPattern?.[field] ?? e?.cause?.keyPattern?.[field]);
 }
 
 // Thrown inside the transaction when someone else already finished this checkout.
@@ -69,6 +79,10 @@ export async function fulfillPayment(
   // is assigned before it is read": it is, because the only way to reach the code that reads it
   // is for the transaction to have finished without throwing.
   let bookingId!: string;
+  // The short code for the ticket. Made BEFORE the transaction, on purpose: a duplicate-key error
+  // inside it is read as "someone else bought the seat", so we make sure the code is already
+  // unique and that error can't come from here.
+  const manualCode = await createUniqueManualCode();
   const session = await mongoose.startSession();
   try {
     // withTransaction retries by itself on harmless transient conflicts, e.g. when two copies of
@@ -83,6 +97,7 @@ export async function fulfillPayment(
             totalAmount: checkout.totalAmount,
             currency: checkout.currency,
             paymentIntentId: pi.id,
+            manualCode,
             status: "confirmed",
           },
         ],
@@ -108,6 +123,10 @@ export async function fulfillPayment(
     });
   } catch (err) {
     if (err instanceof AlreadyProcessed) return "already_done";
+    // Two payments drew the SAME manual code in the same instant (about 1 in a trillion). That is
+    // NOT a seat conflict, so never refund for it: fail, and Stripe re-sends the webhook, which
+    // draws a new code.
+    if (isDuplicateOn(err, "manualCode")) throw err;
     if (!isDuplicateKey(err)) throw err; // a real failure: let Stripe retry the webhook later
 
     // Duplicate key: either THIS payment was already turned into a booking by a parallel copy of

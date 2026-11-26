@@ -5,6 +5,7 @@ const LINKS = [
   { to: "/admin/cinemas", label: "Cinemas" },
   { to: "/admin/halls", label: "Halls & seats" },
   { to: "/admin/showtimes", label: "Showtimes" },
+  { to: "/admin/users", label: "Users" },
 ];
 
 // Sidebar + the page for the current /admin/... URL (rendered at <Outlet />).

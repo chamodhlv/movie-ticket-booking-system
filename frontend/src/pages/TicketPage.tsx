@@ -145,6 +145,17 @@ export default function TicketPage() {
           <p className="font-mono text-lg font-semibold tracking-wider">
             {booking.reference}
           </p>
+          {ticket && (
+            // For when the QR code won't scan (cracked screen, dirty camera): staff type this.
+            <>
+              <p className="mt-3 text-xs text-slate-500">
+                Backup code (if the QR won't scan)
+              </p>
+              <p className="font-mono text-lg font-semibold tracking-widest text-emerald-300">
+                {ticket.manualCode}
+              </p>
+            </>
+          )}
         </div>
       </article>
 
